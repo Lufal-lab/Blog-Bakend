@@ -1,5 +1,6 @@
 import pytest
 from django.core.exceptions import ValidationError
+from django.db.models.deletion import ProtectedError
 from user.models import Team, CustomUser
 
 @pytest.mark.django_db
@@ -18,18 +19,12 @@ class TestTeams:
         assert user.team == equipo
         assert user.team.name == "Equipo B"
 
-    def test_eliminar_team_deja_usuarios_sin_team(self):
-        team = Team.objects.create(name="Equipo X")
-        user = CustomUser.objects.create_user(email="user@example.com", password="123456", team=team)
-        team.delete()
-        user.refresh_from_db()
-        assert user.team is None
-
-    def test_eliminar_team_no_elimina_usuario(self):
+    def test_no_se_puede_eliminar_team_con_usuarios(self):
         team = Team.objects.create(name="Equipo Y")
         user = CustomUser.objects.create_user(email="survive@example.com", password="123", team=team)
-        team.delete()
-        assert CustomUser.objects.filter(pk=user.pk).exists()
+        with pytest.raises(ProtectedError):
+            team.delete()
+
 
     def test_nombre_team_no_puede_ser_vacio(self):
         t = Team(name="")

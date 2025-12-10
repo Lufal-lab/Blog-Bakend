@@ -41,7 +41,11 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     #SE AÑADE TEAM
     # FK al Team
-    team = models.ForeignKey(Team, on_delete=models.SET_NULL, null=True, blank=True)
+    team = models.ForeignKey(
+        Team, 
+        on_delete=models.PROTECT,
+        default=lambda: Team.objects.get_or_create(name="Default")[0]
+    )
     
     objects = CustomUserManager()
 

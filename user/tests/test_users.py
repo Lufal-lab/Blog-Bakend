@@ -51,9 +51,9 @@ class TestUserModel:
         assert user.is_active is True
         assert user.is_staff is False
 
-    def test_usuario_puede_no_tener_team(self):
-        user = self.User.objects.create_user(email="noteam@example.com", password="123", team=None)
-        assert user.team is None
+    def test_usuario_recibe_team_por_defecto(self):
+        user = self.User.objects.create_user(email="noteam@example.com", password="123")
+        assert user.team.name == "Default"
 
     def test_cambiar_team_variass_veces(self):
         t1 = Team.objects.create(name="A")
