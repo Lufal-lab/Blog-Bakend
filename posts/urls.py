@@ -1,15 +1,14 @@
-# from django.urls import path
-# from .views import PostListCreateView, PostDetailView
+from rest_framework_nested import routers
+from posts.viewsets import PostViewSet
+from comments.viewsets import CommentViewSet
+from likes.viewsets import LikeViewSet
 
-# urlpatterns = [
-#     path("posts/", PostListCreateView.as_view(), name="post-list-create"),
-#     path("posts/<int:pk>/", PostDetailView.as_view(), name="post-detail"),
-# ]
-
-from rest_framework.routers import DefaultRouter
-from .viewsets import PostViewSet
-
-router = DefaultRouter()
+router = routers.DefaultRouter()
 router.register(r'posts', PostViewSet, basename='posts')
 
-urlpatterns = router.urls
+# Nested routers
+posts_router = routers.NestedDefaultRouter(router, r'posts', lookup='post')
+posts_router.register(r'comments', CommentViewSet, basename='post-comments')
+posts_router.register(r'likes', LikeViewSet, basename='post-likes')
+
+urlpatterns = router.urls + posts_router.urls

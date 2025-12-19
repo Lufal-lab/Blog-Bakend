@@ -1,92 +1,95 @@
-# posts/serializers.py
-
 from rest_framework import serializers
 from .models import Post
 
+PRIVACY_CHOICES = ["public", "authenticated", "team", "author"]
+
 
 class PostSerializer(serializers.ModelSerializer):
-    """
-    Este serializer convierte objetos Post <-> JSON.
-    
-    - Cuando el backend envía información → convierte Post a JSON.
-    - Cuando el usuario envía datos (POST/PUT) → convierte JSON a Post.
-        (serializer.is_valid() + serializer.save())
-    
-    ModelSerializer ya sabe cómo mapear los campos del modelo automáticamente.
-    """
+    author_email = serializers.EmailField(
+        source="author.email",
+        read_only=True
+    )
+    author_team = serializers.CharField(
+        source="author.team.name",
+        read_only=True
+    )
+    excerpt = serializers.SerializerMethodField()
+    likes_count = serializers.SerializerMethodField()
+    comments_count = serializers.SerializerMethodField()
 
     class Meta:
-        model = Post  # El modelo que se va a serializar
-
-        # Campos que queremos mostrar y permitir escribir
+        model = Post
         fields = [
             "id",
             "author",
+            "author_email",
+            "author_team",
             "title",
             "content",
+            "excerpt",
+            "likes_count",
+            "comments_count",
             "created_at",
             "updated_at",
             "privacy_read",
             "privacy_write",
         ]
+        read_only_fields = fields
 
-        # Estos campos NO deben ser modificables por el cliente
-        read_only_fields = [
-            "id",
-            "author",        # el autor lo pondremos automáticamente en la vista
-            "created_at",
-            "updated_at",
+    def get_excerpt(self, obj):
+        return obj.content[:200]
+
+    def get_likes_count(self, obj):
+        return obj.likes.count()
+
+    def get_comments_count(self, obj):
+        return obj.comments.count()
+
+class PostWriteSerializer(serializers.ModelSerializer):
+    privacy_read = serializers.ChoiceField(choices=PRIVACY_CHOICES)
+    privacy_write = serializers.ChoiceField(choices=PRIVACY_CHOICES)
+
+    class Meta:
+        model = Post
+        fields = [
+            "title",
+            "content",
+            "privacy_read",
+            "privacy_write",
         ]
 
-    # ------------------------------------------------------------------
-    # VALIDACIONES PERSONALIZADAS
-    # ------------------------------------------------------------------
-
-    def validate_title(self, value):
-        """
-        Ejemplo de validación:
-        - Evitamos títulos vacíos o demasiado cortos.
-        """
-        if len(value.strip()) < 3:
-            raise serializers.ValidationError("El título debe tener mínimo 3 caracteres.")
-        return value
-
     def validate(self, data):
-        """
-        Validación general del post:
-        Aquí podrías agregar reglas más complejas.
-        Por ejemplo:
-        - No permitir ciertas combinaciones de privacidad
-        - Asegurar que ciertos usuarios tengan permisos
-        """
-
-    # Validación cruzada entre campos (si necesitas reglas complejas)
-    # Por ejemplo, podrías prohibir privacy_write == 'public' si no quieres que cualquiera edite.
+        if data.get("privacy_write") == "public":
+            raise serializers.ValidationError({
+                "privacy_write": "Write permission cannot be 'public'."
+            })
         return data
 
-    # ------------------------------------------------------------------
-    # CREACIÓN Y ACTUALIZACIÓN DEL POST
-    # ------------------------------------------------------------------
+    def validate_title(self, value):
+        if len(value.strip()) < 3:
+            raise serializers.ValidationError("Title must have at least 3 characters.")
+        return value
 
-    def create(self, validated_data):
-        """
-        Cuando se crea un post desde un JSON:
-        El método recibe 'validated_data', que contiene datos seguros,
-        ya validados y listos para crear el Post.
-        """
-        # Cuando usamos serializer.save(author=usuario) en la view,
-        # validated_data ya contiene lo seguro y listo para crear.
-        return Post.objects.create(**validated_data)
+    def validate_content(self, value):
+        if not value.strip():
+            raise serializers.ValidationError("Content cannot be empty.")
+        return value
 
-    def update(self, instance, validated_data):
-        """
-        Actualiza un post existente.
-        'instance' es el Post que ya existe.
-        'validated_data' son los datos nuevos enviados desde el frontend.
-        """
-        
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
+class PostValidationErrorSerializer(serializers.Serializer):
 
-        instance.save()
-        return instance
+    title = serializers.ListField(
+        child=serializers.CharField(),
+        required=False
+    )
+    content = serializers.ListField(
+        child=serializers.CharField(),
+        required=False
+    )
+    privacy_read = serializers.ListField(
+        child=serializers.CharField(),
+        required=False
+    )
+    privacy_write = serializers.ListField(
+        child=serializers.CharField(),
+        required=False
+    )

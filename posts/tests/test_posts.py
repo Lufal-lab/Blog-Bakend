@@ -2,73 +2,73 @@ import pytest
 from django.contrib.auth import get_user_model
 from posts.models import Post
 
-
 # ============================================================
-# TODOS LOS TESTS NECESITAN BASE DE DATOS
+# ALL TESTS REQUIRE DATABASE
 # ============================================================
 @pytest.mark.django_db
 class TestPostsModel:
+    """
+    Tests for the Post model:
+    - Basic creation
+    - Default values
+    - Related fields
+    - Cascade delete behavior
+    """
 
     # ========================================================
-    # setup_method → se ejecuta ANTES de cada test
-    # Aquí guardamos la referencia al modelo User
+    # setup_method → runs BEFORE each test
+    # Store reference to the User model
     # ========================================================
     def setup_method(self):
         self.User = get_user_model()
 
     # ========================================================
-    # 1. Test de creación básica de Post
+    # 1. Basic Post creation
     # ========================================================
-    def test_crear_post(self):
+    def test_create_post(self):
         """
-        Verifica que:
-        - Se pueda crear un Post
-        - Se asigne correctamente el autor
-        - Se guarden todos los campos
+        Verifies that:
+        - A Post can be created
+        - The author is correctly assigned
+        - All fields are stored
         """
-
-        # Crear usuario autor
         user = self.User.objects.create_user(
-            email="autor@example.com",
+            email="author@example.com",
             password="123456"
         )
 
-        # Crear post
         post = Post.objects.create(
             author=user,
-            title="Mi primer post",
-            content="Contenido del post"
+            title="My first post",
+            content="Post content"
         )
 
-        # Afirmaciones
         assert post.author == user
-        assert post.title == "Mi primer post"
-        assert post.content == "Contenido del post"
+        assert post.title == "My first post"
+        assert post.content == "Post content"
 
     # ========================================================
-    # 2. Las fechas se asignan automáticamente
+    # 2. Automatic date assignment
     # ========================================================
-    def test_fechas_auto(self):
-
+    def test_auto_dates(self):
         user = self.User.objects.create_user(
-            email="fechas@example.com",
+            email="dates@example.com",
             password="123"
         )
 
         post = Post.objects.create(
             author=user,
-            title="Con fechas",
-            content="Probando fechas"
+            title="With dates",
+            content="Testing dates"
         )
 
         assert post.created_at is not None
         assert post.updated_at is not None
 
     # ========================================================
-    # 3. Privacidad por defecto
+    # 3. Default privacy values
     # ========================================================
-    def test_privacidad_por_defecto(self):
-
+    def test_default_privacy(self):
         user = self.User.objects.create_user(
             email="priv@example.com",
             password="123"
@@ -76,19 +76,17 @@ class TestPostsModel:
 
         post = Post.objects.create(
             author=user,
-            title="Privado?",
+            title="Private?",
             content="..."
         )
 
-        # Estos valores vienen del modelo
         assert post.privacy_read == "public"
         assert post.privacy_write == "author"
 
     # ========================================================
-    # 4. Cambiar manualmente la privacidad
+    # 4. Manually changing privacy
     # ========================================================
-    def test_cambiar_privacidad(self):
-
+    def test_change_privacy(self):
         user = self.User.objects.create_user(
             email="priv2@example.com",
             password="123"
@@ -96,20 +94,19 @@ class TestPostsModel:
 
         post = Post.objects.create(
             author=user,
-            title="Cambios",
-            content="Editando privacidad",
-            privacy_read="team",           # ✔ válido
-            privacy_write="authenticated"  # ✔ válido
+            title="Changes",
+            content="Editing privacy",
+            privacy_read="team",
+            privacy_write="authenticated"
         )
 
         assert post.privacy_read == "team"
         assert post.privacy_write == "authenticated"
 
     # ========================================================
-    # 5. __str__ debe devolver el título
+    # 5. __str__ returns the title
     # ========================================================
     def test_str(self):
-
         user = self.User.objects.create_user(
             email="str@example.com",
             password="123"
@@ -117,17 +114,16 @@ class TestPostsModel:
 
         post = Post.objects.create(
             author=user,
-            title="Título bonito",
+            title="Beautiful Title",
             content="..."
         )
 
-        assert str(post) == "Título bonito"
+        assert str(post) == "Beautiful Title"
 
     # ========================================================
-    # 6. Un usuario puede escribir varios posts
+    # 6. A user can have multiple posts
     # ========================================================
-    def test_usuario_con_varios_posts(self):
-
+    def test_user_multiple_posts(self):
         user = self.User.objects.create_user(
             email="multi@example.com",
             password="123"
@@ -144,10 +140,9 @@ class TestPostsModel:
         assert p3 in user.posts.all()
 
     # ========================================================
-    # 7. Si se borra el usuario → se borran sus posts
+    # 7. Deleting a user cascades to posts
     # ========================================================
-    def test_borrado_usuario_elimina_posts(self):
-
+    def test_delete_user_cascades_posts(self):
         user = self.User.objects.create_user(
             email="delete@example.com",
             password="123"
@@ -156,17 +151,15 @@ class TestPostsModel:
         Post.objects.create(author=user, title="X", content="...")
         Post.objects.create(author=user, title="Y", content="...")
 
-        # Eliminamos usuario
         user.delete()
 
-        # Todos sus posts deben desaparecer (CASCADE)
+        # All posts should be removed
         assert Post.objects.count() == 0
 
     # ========================================================
-    # 8. updated_at se actualiza al guardar cambios
+    # 8. updated_at changes when saving
     # ========================================================
-    def test_updated_at_cambia(self):
-
+    def test_updated_at_changes(self):
         user = self.User.objects.create_user(
             email="update@example.com",
             password="123"
@@ -180,8 +173,7 @@ class TestPostsModel:
 
         old_updated = post.updated_at
 
-        # Cambiamos algo y guardamos
-        post.content = "nuevo contenido"
+        post.content = "new content"
         post.save()
 
         assert post.updated_at > old_updated

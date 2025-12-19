@@ -39,10 +39,12 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework_simplejwt',
+    'drf_spectacular',
     'user',
     'posts',
     'comments',
-    'likes',    
+    'likes', 
+    'docs',
 ]
 
 MIDDLEWARE = [
@@ -59,9 +61,23 @@ ROOT_URLCONF = 'avanzatech_blog.urls'
 
 AUTH_USER_MODEL = 'user.CustomUser'
 
+#Lo agregue yo
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": 8}
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
+    },
+]
+
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 
-SESSION_COOKIE_AGE = 300 # 5 minutos 86400  # 24 horas  weeks, in seconds
+SESSION_COOKIE_AGE = 86400 # 5 minutos 86400  # 24 horas  weeks, in seconds
 
 
 SESSION_COOKIE_SECURE = False  # Send the cookie only over HTTPS #Estaba en true pero al ponerlo en false ya va a correrolo sobre todo 
@@ -127,7 +143,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/Bogota'#'UTC'
 
 USE_I18N = True
 
@@ -148,18 +164,28 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # DRF AUTH CONFIG (SESSION / JWT)
 # ==============================
 
-#ACA ESTAMOS EN COOKIES
-USE_JWT_AUTH = False  # 👈 CAMBIA ESTO A True O False
+# #ACA ESTAMOS EN COOKIES
+# USE_JWT_AUTH = False  # 👈 CAMBIA ESTO A True O False
 
-if USE_JWT_AUTH:
-    REST_FRAMEWORK = {
-        "DEFAULT_AUTHENTICATION_CLASSES": [
-            "rest_framework_simplejwt.authentication.JWTAuthentication",
-        ]
-    }
-else:
-    REST_FRAMEWORK = {
-        "DEFAULT_AUTHENTICATION_CLASSES": [
-            "rest_framework.authentication.SessionAuthentication",
-        ]
-    }
+# if USE_JWT_AUTH:
+#     REST_FRAMEWORK = {
+#         "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+#         "DEFAULT_AUTHENTICATION_CLASSES": [
+#             "rest_framework_simplejwt.authentication.JWTAuthentication",
+#         ]
+#     }
+# else:
+REST_FRAMEWORK = {
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+    ]
+}
+    
+
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Avanzatech Blog API",
+    "DESCRIPTION": "Documentación automática de la API",
+    "VERSION": "1.0.0",
+}

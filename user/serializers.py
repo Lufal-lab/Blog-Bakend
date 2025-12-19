@@ -1,45 +1,127 @@
+from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
+from django.core.exceptions import ValidationError
+from rest_framework.validators import UniqueValidator
+from django.contrib.auth import get_user_model
 from .models import CustomUser, Team
 
 class UserSerializer(serializers.ModelSerializer):
     """
-    Serializador para el modelo CustomUser.
-    Se usa principalmente para:
-    - Crear nuevos usuarios
-    - Devolver información del usuario a la API
+    Serializer for the CustomUser model.
+
+    Used primarily for:
+    - Creating new users
+    - Returning user information in API responses
     """
 
-    # Campo password solo se escribe, nunca se devuelve en la respuesta JSON
+    # Password field is write-only: never returned in API responses
     password = serializers.CharField(
-        write_only=True, # Esto evita que se envíe la contraseña al frontend
-        required=True, # Obligatorio para crear usuario
-        min_length=8) # Se requiere mínimo 8 caracteres
+        write_only=True, # Prevents password from being sent to frontend
+        required=True, # Required when creating a user
+        min_length=8)  # Minimum length for security
 
     class Meta:
         """
-        Configuración interna del serializer
+        Internal configuration for the serializer
         """
-        model = CustomUser #Modelo a serializar
+        model = CustomUser # Model to serialize
+        fields = ['id', 'email', 'password'] # Fields to accept / return
+        read_only_fields = ['id', 'team'] # Automatically generated fields, cannot be set manually
 
-        fields = ['id', 'email', 'password', 'team'] #Campos a aceptar/Se devolverá el serializer
+    def validate_email(self, value):
+        """
+        Ensure the email is always stored in lowercase.
 
-        read_only_fields = ['id'] #id generado automáticamente, no se puede escribir
+        Args:
+            value (str): The email to validate
 
-        # ------------------------------------------------------------------
-        # MÉTODO CREATE: SE EJECUTA CUANDO LLAMAMOS serializer.save()
-        # ------------------------------------------------------------------
-        def create(self, validated_data):
-            """
-            Crea un usuario nuevo con contraseña encriptada
-            validated_data: diccionario con datos validados desde la request (JSON)
-            """
-            # Se wxtrae la contraseña del diccionario para procesarla aparte
-            password = validated_data.pop('password')
-            # Se crea una instancia de usuario con los otros campos (email y team)
-            user = CustomUser(**validated_data)
-            #Encriptado de la contraseña
-            user.set_password(password)
-            #Guardar usuario en la base de datos
-            user.save()
-            #Retornar usuario creado
-            return user
+        Returns:
+            str: Lowercased email
+        """
+        return value.lower()
+    
+    def create(self, validated_data):
+        """
+        Creates a new CustomUser instance with an encrypted password.
+
+        Args:
+            validated_data (dict): Validated data from the serializer (from JSON request)
+
+        Returns:
+            CustomUser: The newly created user instance
+        """
+
+        # Extract password from the validated data to process separately
+        password = validated_data.pop('password')
+        # Get or create the default team
+        default_team = Team.objects.filter(name="Default").first()
+        if not default_team:
+            default_team = Team.objects.create(name="Default")
+
+        # Create user instance with remaining validated data    
+        user = CustomUser(team=default_team, **validated_data)
+
+        # Ensure email is lowercase
+        user.email = user.email.lower()
+
+        # Encrypt the password
+        user.set_password(password)
+        
+        # Save user to the database
+        user.save()
+
+        return user
+    
+class LoginSerializer(serializers.ModelSerializer):
+    """
+    Serializer for user login.
+
+    Only requires email and password fields.
+    """
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+
+class RegisterSerializer(serializers.ModelSerializer):
+    """
+    Serializer for user registration.
+
+    Only requires email and password fields.
+    """
+    
+    email = serializers.EmailField(
+        validators=[UniqueValidator(
+            queryset=CustomUser.objects.all(),
+            message="Email already registered."
+        )]
+    )
+    password = serializers.CharField(write_only=True, min_length=8)
+
+    class Meta:
+        model = CustomUser
+        fields = ['id', 'email', 'password']
+        read_only_fields = ['id']
+
+    def validate_email(self, value):
+        """Force email to lowercase and check uniqueness ignoring case."""
+        value = value.lower()
+        if CustomUser.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError("Email already registered.")
+        return value
+
+    def validate_password(self, value):
+        # Validar con los validators activos en settings.py
+        validate_password(value)  # ya no necesitamos pasar `user`
+        return value
+
+    def create(self, validated_data):
+        """Create user with hashed password and default team."""
+        email = validated_data.pop('email').lower()
+        password = validated_data.pop('password')
+
+        # Get or create default team
+        default_team, _ = Team.objects.get_or_create(name="Default")
+
+        user = CustomUser(email=email, team=default_team)
+        user.set_password(password)
+        user.save()
+        return user
