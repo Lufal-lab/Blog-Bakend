@@ -3,12 +3,9 @@ from django.contrib.auth import get_user_model
 from user.models import Team
 from posts.models import Post
 
-# -----------------------------------------
-# FIXTURES
-# -----------------------------------------
 @pytest.fixture
 def user_default():
-    """User created with default team."""
+
     User = get_user_model()
     return User.objects.create_user(
         email="default@example.com",
@@ -18,7 +15,7 @@ def user_default():
 
 @pytest.fixture
 def user_with_team():
-    """User created with a specific team."""
+
     User = get_user_model()
     team = Team.objects.create(name="Team X")
     return User.objects.create_user(
@@ -29,17 +26,9 @@ def user_with_team():
 
 @pytest.mark.django_db
 class TestPostsPermissions:
-    """
-    Tests Post model read/write permissions for different users:
-    - author
-    - same team
-    - other team
-    - superuser
-    - anonymous user
-    """
 
     def setup_method(self):
-        """Setup users and teams for permission testing."""
+
         self.User = get_user_model()
 
         # Author with a real team
@@ -76,11 +65,8 @@ class TestPostsPermissions:
         # Anonymous user simulation
         self.anon_user = type("Anonymous", (), {"is_authenticated": False})()
 
-    # ---------------------------------------------------------
-    # READ PERMISSIONS
-    # ---------------------------------------------------------
     def test_can_user_read_public(self):
-        """All users, including anonymous, can read public posts."""
+
         post = Post.objects.create(
             author=self.author,
             title="Public",
@@ -94,7 +80,7 @@ class TestPostsPermissions:
         assert post.can_user_read(self.anon_user)
 
     def test_can_user_read_authenticated(self):
-        """Only authenticated users can read posts with privacy AUTHENTICATED."""
+
         post = Post.objects.create(
             author=self.author,
             title="Auth",
@@ -108,7 +94,7 @@ class TestPostsPermissions:
         assert post.can_user_read(self.anon_user) is False
 
     def test_can_user_read_team(self):
-        """Only users from the same team or superuser can read team posts."""
+
         post = Post.objects.create(
             author=self.author,
             title="Team",
@@ -122,7 +108,7 @@ class TestPostsPermissions:
         assert post.can_user_read(self.anon_user) is False
 
     def test_can_user_read_author(self):
-        """Only the author or superuser can read posts with privacy AUTHOR."""
+
         post = Post.objects.create(
             author=self.author,
             title="Author",
@@ -136,11 +122,8 @@ class TestPostsPermissions:
         assert post.can_user_read(self.staff_user) is True
         assert post.can_user_read(self.anon_user) is False
 
-    # ---------------------------------------------------------
-    # WRITE PERMISSIONS
-    # ---------------------------------------------------------
     def test_can_user_edit_authenticated(self):
-        """Authenticated users can edit posts with privacy AUTHENTICATED."""
+
         post = Post.objects.create(
             author=self.author,
             title="Auth Write",
@@ -154,7 +137,7 @@ class TestPostsPermissions:
         assert post.can_user_edit(self.anon_user) is False
 
     def test_can_user_edit_team(self):
-        """Only users from the same team or superuser can edit team posts."""
+
         post = Post.objects.create(
             author=self.author,
             title="Team Write",
@@ -168,7 +151,7 @@ class TestPostsPermissions:
         assert post.can_user_edit(self.anon_user) is False
 
     def test_can_user_edit_author(self):
-        """Only the author or superuser can edit posts with privacy AUTHOR."""
+
         post = Post.objects.create(
             author=self.author,
             title="Author Write",
@@ -182,11 +165,8 @@ class TestPostsPermissions:
         assert post.can_user_edit(self.staff_user)
         assert post.can_user_edit(self.anon_user) is False
 
-    # ---------------------------------------------------------
-    # DEFAULT USER RULES
-    # ---------------------------------------------------------
     def test_author_always_can_read_own_post(self, user_with_team):
-        """An author can always read their own post, regardless of privacy."""
+
         post = Post(
             author=user_with_team,
             title="My Post",

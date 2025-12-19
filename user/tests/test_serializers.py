@@ -5,28 +5,16 @@ from user.models import CustomUser, Team
 
 @pytest.mark.django_db
 class TestUserSerializer:
-    """
-    Test suite for the UserSerializer.
-
-    Validates:
-    - User creation with valid data
-    - Required fields (email, password)
-    - Proper handling of default team assignment
-    - Password encryption
-    """
 
     def setup_method(self):
-        """Setup method to create the default team for the tests."""
+
         self, _ = Team.objects.get_or_create(name="Default")
 
     # -------------------------------------------
     # 1. Test: successfully creates a user
     # -------------------------------------------
     def test_serializer_creates_user(self):
-        """
-        Ensure that the serializer creates a user correctly
-        with lowercase email, encrypted password, and default team.
-        """
+
         data = {
             "email": "TEST@EMAIL.COM",
             "password": "12345678"
@@ -47,14 +35,8 @@ class TestUserSerializer:
         # User should be assigned to the default team
         assert user.team.name == "Default"
 
-    # -------------------------------------------
-    # 2. Test: email is required
-    # -------------------------------------------
     def test_serializer_email_required(self):
-        """
-        Ensure that the serializer raises a validation error
-        if the email is missing.
-        """
+
         data = {
             "password": "12345678"
         }
@@ -63,14 +45,8 @@ class TestUserSerializer:
         assert not serializer.is_valid()
         assert "email" in serializer.errors
 
-    # -------------------------------------------
-    # 3. Test: password is required
-    # -------------------------------------------
     def test_serializer_password_required(self):
-        """
-        Ensure that the serializer raises a validation error
-        if the password is missing.
-        """
+
         data = {
             "email": "test@email.com"
         }

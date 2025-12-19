@@ -1,190 +1,144 @@
-# Blog
-# Blogging Platform API
+# AvanzaTech Blog Platform API
 
-## Description
+## Project Name
+avanzatech_blog
 
-This project is a RESTful Blogging Platform built with **Django** and **Django Rest Framework (DRF)**. It allows users to create, read, update and delete blog posts with **fine‑grained read and write permissions**, as well as interact with posts through **likes** and **comments**. The platform also includes **team‑based permissions**, **user roles**, and a fully configured **Django admin panel**.
+## Project Description
+avanzatech_blog is a RESTful API built with Django and Django Rest Framework that implements a blogging platform with authentication, team-based permissions, likes, comments, and administrative control.
 
----
-
-## Features
-
-* User authentication (login/logout)
-* User roles: **admin** and **blogger**
-* Team-based access control (each user belongs to exactly one team)
-* Blog post permissions with independent **read** and **write** controls
-* CRUD operations for blog posts
-* Like and unlike functionality
-* Comment creation and deletion
-* Pagination for posts, likes and comments
-* Django admin panel with full permissions
-
----
+The project focuses on correct permission handling, clean architecture, and full test coverage according to the lab requirements.
 
 ## Tech Stack
-
-* Python
-* Django
-* Django Rest Framework
-* SQLite / PostgreSQL (depending on environment)
-
----
-
-## Setup Instructions
-
-### 1. Clone the repository
-
-```bash
-git clone <your-repository-url>
-cd <project-folder>
-```
-
-### 2. Create and activate virtual environment
-
-```bash
-python -m venv venv
-source venv/bin/activate  # Linux / Mac
-venv\\Scripts\\activate     # Windows
-```
-
-### 3. Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Run migrations
-
-```bash
-python manage.py migrate
-```
-
-### 5. Create superuser (site admin)
-
-```bash
-python manage.py createsuperuser
-```
-
-### 6. Run development server
-
-```bash
-python manage.py runserver
-```
-
----
+- Python 3.12.3
+- Django 6.0
+- Django Rest Framework
+- PostgreSQL
+- pytest / pytest-django
+- drf-nested-routers
+- drf-spectacular
 
 ## Authentication
+Authentication is handled using cookies.
+Users can register, log in, and log out.
+Protected endpoints require authentication unless explicitly public.
 
-* Authentication is handled using Django / DRF authentication mechanisms.
-* Users must be authenticated to:
+## Core Concepts
 
-  * Create posts
-  * Like or unlike posts
-  * Comment on posts
-* Non‑authenticated users can only view posts that have **public read access**.
+### Users and Teams
+- Each user belongs to exactly one team.
+- Users can change teams.
+- Permissions are evaluated dynamically.
+- When a user changes teams, they lose access to posts from the previous team.
+- Only the current team determines access.
 
----
+### Roles
+- Admin users can read and edit any post and bypass permission restrictions.
+- Regular users are subject to post permissions.
 
-## User Roles
+## Blog Posts
+Each post includes:
+- Author (automatically set from logged-in user)
+- Title
+- Content
+- Excerpt (first 200 characters)
+- Created and updated timestamps
+- Read permissions
+- Write permissions
 
-* **Admin (role)**: Can read, edit and delete any post regardless of permissions.
-* **Blogger**: Access is restricted by post permissions.
+## Permissions System
+Read and write permissions are independent.
 
-> Note: The **admin role** is different from the **Django site admin** (`is_staff`).
+Available levels:
+- Public: anyone can access
+- Authenticated: any logged-in user
+- Team: users in the author's team
+- Author: only the author
 
----
-
-## Post Permissions
-
-Each blog post has **independent read and write permissions** for the following levels:
-
-* **Public**: Anyone can access
-* **Authenticated**: Any logged‑in user
-* **Team**: Users in the same team as the author
-* **Author**: Only the post author
-
-### Example:
-
-* Public: Read only
-* Authenticated: Read only
-* Team: Read and write
-* Author: Read and write
-
-Permissions are validated before any read, edit or delete operation.
-
----
+Rules:
+- Admins bypass restrictions.
+- Team permissions do not apply if the author is in the Default team.
+- Object-level permission checks are enforced.
 
 ## API Endpoints
 
+### Authentication
+POST /api/users/register/
+POST /api/users/login/
+POST /api/users/logout/
+
 ### Posts
+GET /api/posts/
+POST /api/posts/
+GET /api/posts/{post_id}/
+PUT /api/posts/{post_id}/
+PATCH /api/posts/{post_id}/
+DELETE /api/posts/{post_id}/
 
-| Method | Endpoint         | Description           |
-| ------ | ---------------- | --------------------- |
-| POST   | /api/posts/      | Create a blog post    |
-| GET    | /api/posts/      | List accessible posts |
-| GET    | /api/posts/{id}/ | Retrieve post details |
-| PUT    | /api/posts/{id}/ | Update post           |
-| DELETE | /api/posts/{id}/ | Delete post           |
-
-### Likes
-
-| Method | Endpoint              | Description             |
-| ------ | --------------------- | ----------------------- |
-| POST   | /api/posts/{id}/like/ | Like a post             |
-| DELETE | /api/posts/{id}/like/ | Unlike a post           |
-| GET    | /api/likes/           | List likes (filterable) |
+- List returns only accessible posts.
+- Detail returns 404 if no read access.
+- Pagination: 10 posts per page.
 
 ### Comments
+GET /api/posts/{post_id}/comments/
+POST /api/posts/{post_id}/comments/
+GET /api/posts/{post_id}/comments/{comment_id}/
+DELETE /api/posts/{post_id}/comments/{comment_id}/
 
-| Method | Endpoint            | Description                |
-| ------ | ------------------- | -------------------------- |
-| POST   | /api/comments/      | Create comment             |
-| GET    | /api/comments/      | List comments (filterable) |
-| DELETE | /api/comments/{id}/ | Delete own comment         |
+Rules:
+- Authentication required.
+- User must have read access.
+- Users can delete only their own comments.
+- Pagination: 10 comments per page.
 
----
+### Likes
+POST /api/posts/{post_id}/likes/
+DELETE /api/posts/{post_id}/likes/unlike/
 
-## Pagination
+Rules:
+- Authentication required.
+- User must have read access.
+- One like per user per post.
+- Pagination: 20 likes per page.
 
-* Posts: 10 per page
-* Comments: 10 per page
-* Likes: 20 per page
+## Deletion Rules
+- Only users with edit permission can delete posts.
+- Deleting a post removes all related comments and likes.
 
-Pagination responses include:
+## Testing
+- Tests written with pytest.
+- Organized by models, permissions, serializers, and viewsets.
+- Covers edge cases including team changes and permission updates.
 
-* Current page
-* Total pages
-* Total count
-* Next page URL
-* Previous page URL
+Run tests:
+pytest
 
----
+## Database
+- PostgreSQL
+- Cascade deletions enforced.
+- Unique constraint on likes.
 
-## Admin Panel
+## Installation
 
-* Django admin panel is enabled
-* Site admins can perform full CRUD operations on:
+1. Clone repository
+git clone <repository-url>
 
-  * Users
-  * Posts
-  * Comments
-  * Likes
+2. Create virtual environment
+python -m venv .venv
+source .venv/bin/activate
 
----
+3. Install dependencies
+pip install -r requirements.txt
 
-## Evaluation Criteria Coverage
+4. Apply migrations
+python manage.py migrate
 
-This project satisfies the evaluation requirements by implementing:
+5. Run server
+python manage.py runserver
 
-* Proper database design
-* Authentication and role‑based permissions
-* RESTful API with CRUD operations
-* Like and comment functionality
-* Admin panel configuration
-* Clean and organized codebase
+## API Documentation
+Generated with drf-spectacular:
+/api/schema/
+/api/docs/
 
----
-
-## Authors
-
-Developed as part of a Django REST Framework lab project.
+## Author
+Luisa Fernanda Alvarez Villa

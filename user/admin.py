@@ -6,15 +6,7 @@ from django import forms
 from .models import CustomUser, Team
 
 class CustomUserCreationForm(UserCreationForm):
-    """
-    Custom form for creating a new user in the admin panel.
 
-    Displays only the fields relevant for user creation:
-    - email
-    - team
-    - is_staff
-    - is_active
-    """
     class Meta(UserCreationForm.Meta):
         model = CustomUser
         fields = ('email', 'team', 'is_staff', 'is_active')
@@ -34,15 +26,7 @@ class CustomUserCreationForm(UserCreationForm):
         return user
 
 class CustomUserChangeForm(UserChangeForm):
-    """
-    Custom form for editing an existing user in the admin panel.
 
-    Displays only the fields relevant for user editing:
-    - email
-    - team
-    - is_staff
-    - is_active
-    """
     class Meta:
         model = CustomUser
         fields = ('email', 'team', 'is_staff', 'is_active')
@@ -58,15 +42,7 @@ class CustomUserChangeForm(UserChangeForm):
 # Admin
 @admin.register(CustomUser)
 class CustomUserAdmin(BaseUserAdmin):
-    """
-    Admin panel configuration for the CustomUser model.
 
-    Features:
-    - Custom add and change forms
-    - Display email, staff status, active status, and team in list view
-    - Filter users by staff status, active status, and team
-    - Editable team directly in list view
-    """
     add_form = CustomUserCreationForm
     form = CustomUserChangeForm
     model = CustomUser
@@ -96,12 +72,6 @@ class CustomUserAdmin(BaseUserAdmin):
 
 @admin.register(Team)
 class TeamAdmin(admin.ModelAdmin):
-    """
-    Admin panel configuration for the Team model.
 
-    Features:
-    - Display team name in the list view
-    - Search teams by name
-    """
     list_display = ['name']
     search_fields = ['name']

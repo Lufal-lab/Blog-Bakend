@@ -6,18 +6,13 @@ from posts.serializers import PostSerializer, PostWriteSerializer
 
 @pytest.mark.django_db
 class TestPostSerializerRead:
-    """
-    Tests for PostSerializer (read-only serializer)
-    """
 
     def setup_method(self):
         self.User = get_user_model()
         self.user = self.User.objects.create_user(email="a@a.com", password="123")
 
     def test_serialize_post_to_json(self):
-        """
-        PostSerializer should correctly convert a Post instance to JSON.
-        """
+
         post = Post.objects.create(
             author=self.user,
             title="Hello",
@@ -33,9 +28,7 @@ class TestPostSerializerRead:
         assert data["author_email"] == self.user.email
 
     def test_all_fields_are_read_only(self):
-        """
-        PostSerializer is read-only: all fields must be read_only.
-        """
+
         serializer = PostSerializer()
 
         for field in serializer.fields.values():
@@ -44,18 +37,13 @@ class TestPostSerializerRead:
 
 @pytest.mark.django_db
 class TestPostWriteSerializer:
-    """
-    Tests for PostWriteSerializer (create/update serializer)
-    """
 
     def setup_method(self):
         self.User = get_user_model()
         self.user = self.User.objects.create_user(email="b@b.com", password="123")
 
     def test_create_post_successfully(self):
-        """
-        PostWriteSerializer should create a Post from JSON correctly.
-        """
+
         json_data = {
             "title": "New Post",
             "content": "Post text",
@@ -91,9 +79,7 @@ class TestPostWriteSerializer:
         assert "content" in serializer.errors
 
     def test_read_only_fields_are_not_modified(self):
-        """
-        author, created_at, updated_at should be read-only and not changeable.
-        """
+
         post = Post.objects.create(
             author=self.user,
             title="Old",
