@@ -164,23 +164,23 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # DRF AUTH CONFIG (SESSION / JWT)
 # ==============================
 
-# #ACA ESTAMOS EN COOKIES
-# USE_JWT_AUTH = False  # 👈 CAMBIA ESTO A True O False
+#ACA ESTAMOS EN COOKIES
+USE_JWT_AUTH = False  # 👈 CAMBIA ESTO A True O False
 
-# if USE_JWT_AUTH:
-#     REST_FRAMEWORK = {
-#         "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-#         "DEFAULT_AUTHENTICATION_CLASSES": [
-#             "rest_framework_simplejwt.authentication.JWTAuthentication",
-#         ]
-#     }
-# else:
-REST_FRAMEWORK = {
-    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.SessionAuthentication",
-    ]
-}
+if USE_JWT_AUTH:
+    REST_FRAMEWORK = {
+        "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+        "DEFAULT_AUTHENTICATION_CLASSES": [
+            "rest_framework_simplejwt.authentication.JWTAuthentication",
+        ]
+    }
+else:
+    REST_FRAMEWORK = {
+        "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+        "DEFAULT_AUTHENTICATION_CLASSES": [
+            "rest_framework.authentication.SessionAuthentication",
+        ]
+    }
     
 
 

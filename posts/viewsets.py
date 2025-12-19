@@ -1,103 +1,3 @@
-# from rest_framework import viewsets, status
-# from rest_framework.response import Response
-# from rest_framework.permissions import IsAuthenticatedOrReadOnly
-# from django.db.models import Q
-
-# from drf_spectacular.utils import (
-#     extend_schema_view,
-#     extend_schema,
-#     OpenApiResponse,
-#     OpenApiParameter
-# )
-# from .pagination import PostPagination
-
-# from .models import Post
-# from .serializers import PostSerializer, PostWriteSerializer, PostValidationErrorSerializer
-# from .permissions import CanReadPost, CanEditPost
-
-
-# class PostViewSet(viewsets.ModelViewSet):
-#     queryset = Post.objects.all()
-#     pagination_class = PostPagination
-
-#     def get_permissions(self):
-#         if self.action in ["list", "retrieve"]:
-#             return [CanReadPost()]
-
-#         if self.action in ["update", "partial_update", "destroy"]:
-#             return [IsAuthenticatedOrReadOnly(), CanEditPost()]
-
-#         if self.action == "create":
-#             return [IsAuthenticatedOrReadOnly()]
-
-#         return super().get_permissions()
-
-#     def get_serializer_class(self):
-#         if self.action in ["create", "update", "partial_update"]:
-#             return PostWriteSerializer
-#         return PostSerializer
-
-#     def get_queryset(self):
-#         user = self.request.user
-
-#         print("USER:", user)
-#         print("AUTH:", user.is_authenticated)
-
-#         if self.action == "list":
-#             if user.is_staff:  # superusuario o staff
-#                 queryset = Post.objects.all()
-#             elif not user.is_authenticated:
-#                 queryset = Post.objects.filter(
-#                     privacy_read=Post.PrivacyChoices.PUBLIC
-#                 )
-#             else:
-#                 queryset = Post.objects.filter(
-#                     Q(privacy_read=Post.PrivacyChoices.PUBLIC) |
-#                     Q(privacy_read=Post.PrivacyChoices.AUTHENTICATED) |
-#                     Q(privacy_read=Post.PrivacyChoices.AUTHOR, author=user) |
-#                     Q(
-#                         privacy_read=Post.PrivacyChoices.TEAM,
-#                         author__team=user.team
-#                     )
-#                 ).distinct()
-
-#         else:
-#             queryset = Post.objects.all()
-
-#         params = self.request.query_params
-
-#         if "id" in params:
-#             queryset = queryset.filter(id=params["id"])
-
-#         if "author" in params:
-#             queryset = queryset.filter(author_id=params["author"])
-
-#         if "team" in params:
-#             queryset = queryset.filter(author__team__name=params["team"])
-
-#         if "privacy_read" in params:
-#             queryset = queryset.filter(privacy_read=params["privacy_read"])
-
-#         if "privacy_write" in params:
-#             queryset = queryset.filter(privacy_write=params["privacy_write"])
-
-#         if "created_from" in params:
-#             queryset = queryset.filter(created_at__date__gte=params["created_from"])
-
-#         if "created_to" in params:
-#             queryset = queryset.filter(created_at__date__lte=params["created_to"])
-
-#         return queryset.order_by("-created_at")
-
-#     def create(self, request, *args, **kwargs):
-#         serializer = PostWriteSerializer(data=request.data)
-#         serializer.is_valid(raise_exception=True)
-
-#         post = serializer.save(author=request.user)
-
-#         response_serializer = PostSerializer(post)
-#         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
-
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
@@ -192,6 +92,7 @@ from .permissions import CanReadPost, CanEditPost
         },
     ),
 )
+
 class PostViewSet(viewsets.ModelViewSet):
     """
     API endpoints for managing blog posts with fine-grained read and write permissions.
@@ -200,71 +101,75 @@ class PostViewSet(viewsets.ModelViewSet):
     queryset = Post.objects.all()
     pagination_class = PostPagination
 
+    # ----------------------------
+    # Permisos
+    # ----------------------------
+    action_permissions = {
+        "list": [CanReadPost()],
+        "retrieve": [CanReadPost()],
+        "create": [IsAuthenticatedOrReadOnly()],
+        "update": [IsAuthenticatedOrReadOnly(), CanEditPost()],
+        "partial_update": [IsAuthenticatedOrReadOnly(), CanEditPost()],
+        "destroy": [IsAuthenticatedOrReadOnly(), CanEditPost()],
+    }
+
     def get_permissions(self):
-        if self.action in ["list", "retrieve"]:
-            return [CanReadPost()]
+        return self.action_permissions.get(self.action, super().get_permissions())
 
-        if self.action in ["update", "partial_update", "destroy"]:
-            return [IsAuthenticatedOrReadOnly(), CanEditPost()]
-
-        if self.action == "create":
-            return [IsAuthenticatedOrReadOnly()]
-
-        return super().get_permissions()
+    # ----------------------------
+    # Serializers
+    # ----------------------------
+    action_serializers = {
+        "create": PostWriteSerializer,
+        "update": PostWriteSerializer,
+        "partial_update": PostWriteSerializer,
+    }
 
     def get_serializer_class(self):
-        if self.action in ["create", "update", "partial_update"]:
-            return PostWriteSerializer
-        return PostSerializer
+        return self.action_serializers.get(self.action, PostSerializer)
 
+    # ----------------------------
+    # Queryset
+    # ----------------------------
     def get_queryset(self):
         user = self.request.user
+        queryset = Post.objects.all()
 
         if self.action == "list":
             if user.is_staff:
                 queryset = Post.objects.all()
             elif not user.is_authenticated:
-                queryset = Post.objects.filter(
-                    privacy_read=Post.PrivacyChoices.PUBLIC
-                )
+                queryset = queryset.filter(privacy_read=Post.PrivacyChoices.PUBLIC)
             else:
                 queryset = Post.objects.filter(
                     Q(privacy_read=Post.PrivacyChoices.PUBLIC)
                     | Q(privacy_read=Post.PrivacyChoices.AUTHENTICATED)
                     | Q(privacy_read=Post.PrivacyChoices.AUTHOR, author=user)
-                    | Q(
-                        privacy_read=Post.PrivacyChoices.TEAM,
-                        author__team=user.team,
-                    )
+                    | Q(privacy_read=Post.PrivacyChoices.TEAM, author__team=user.team)
                 ).distinct()
-        else:
-            queryset = Post.objects.all()
 
-        params = self.request.query_params
+        # ----------------------------
+        # Filtros por query params
+        # ----------------------------
+        param_map = {
+            "id": "id",
+            "author": "author_id",
+            "team": "author__team__name",
+            "privacy_read": "privacy_read",
+            "privacy_write": "privacy_write",
+            "created_from": "created_at__date__gte",
+            "created_to": "created_at__date__lte",
+        }
 
-        if "id" in params:
-            queryset = queryset.filter(id=params["id"])
-
-        if "author" in params:
-            queryset = queryset.filter(author_id=params["author"])
-
-        if "team" in params:
-            queryset = queryset.filter(author__team__name=params["team"])
-
-        if "privacy_read" in params:
-            queryset = queryset.filter(privacy_read=params["privacy_read"])
-
-        if "privacy_write" in params:
-            queryset = queryset.filter(privacy_write=params["privacy_write"])
-
-        if "created_from" in params:
-            queryset = queryset.filter(created_at__date__gte=params["created_from"])
-
-        if "created_to" in params:
-            queryset = queryset.filter(created_at__date__lte=params["created_to"])
+        for param, field in param_map.items():
+            if param in self.request.query_params:
+                queryset = queryset.filter(**{field: self.request.query_params[param]})
 
         return queryset.order_by("-created_at")
 
+    # ----------------------------
+    # Crear post
+    # ----------------------------
     def create(self, request, *args, **kwargs):
         serializer = PostWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
