@@ -6,6 +6,7 @@ def get_default_team():
 
     team, created = Team.objects.get_or_create(name="Default")
     return team.id
+    return 1
 
 class Team(models.Model):
 
