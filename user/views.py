@@ -8,7 +8,7 @@ from django.contrib.auth import get_user_model # To reference CustomUser
 from rest_framework.permissions import IsAuthenticated # Protect endpoints
 
 from drf_spectacular.utils import extend_schema, OpenApiResponse
-from .serializers import LoginSerializer, RegisterSerializer
+from .serializers import LoginSerializer, RegisterSerializer, MeSerializer
 
 User = get_user_model() # Get the CustomUser model
 
@@ -189,3 +189,23 @@ class RegisterUserAPIView(APIView):
                 status=status.HTTP_201_CREATED
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class MeAPIView(APIView):
+    """
+    Returns the currently authenticated user.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        responses={
+            200: MeSerializer,
+            401: OpenApiResponse(
+                description="Authentication required",
+            ),
+        }
+    )
+
+    def get(self, request):
+        serializer = MeSerializer(request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)

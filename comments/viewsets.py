@@ -132,7 +132,7 @@ class CommentViewSet(ModelViewSet):
         Optional filtering:
         - `post` query parameter: filter comments belonging to a specific post
         """
-        queryset = Comment.objects.all().order_by("-created_at")
+        queryset = Comment.objects.all().order_by("created_at")
         post_id = self.kwargs.get("post_pk")
         if post_id:
             queryset = queryset.filter(post_id=post_id)

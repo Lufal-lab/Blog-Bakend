@@ -176,5 +176,9 @@ class PostViewSet(viewsets.ModelViewSet):
 
         post = serializer.save(author=request.user)
 
-        response_serializer = PostSerializer(post)
+        # response_serializer = PostSerializer(post)
+        response_serializer = PostSerializer(
+            post,
+            context={'request': request}  
+    )
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)

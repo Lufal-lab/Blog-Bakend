@@ -87,13 +87,25 @@ class LikeViewSet(viewsets.ModelViewSet):
     # ============================================================
     # OPTIONAL: Filter likes by post
     # ============================================================
+    
     def get_queryset(self):
-        queryset = Like.objects.all().order_by("-created_at")
-        post_id = self.kwargs.get("post_pk")  # viene del nested router
-        # post_id = self.request.query_params.get("post", None)
+        post_id = self.kwargs.get("post_pk")
+
+        queryset = Like.objects.all()
+
         if post_id is not None:
             queryset = queryset.filter(post_id=post_id)
-        return queryset
+            
+        return queryset.order_by("created_at")
+
+    
+    # def get_queryset(self):
+    #     queryset = Like.objects.all().order_by("-created_at")
+    #     post_id = self.kwargs.get("post_pk")  # viene del nested router
+    #     # post_id = self.request.query_params.get("post", None)
+    #     if post_id is not None:
+    #         queryset = queryset.filter(post_id=post_id)
+    #     return queryset
     
     @action(detail=False, methods=['delete'], url_path='unlike')
     def unlike(self, request, post_pk=None):
