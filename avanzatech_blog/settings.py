@@ -55,6 +55,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # 'user.views.CSRFDebugMiddleware',
 ]
 
 ROOT_URLCONF = 'avanzatech_blog.urls'
@@ -141,6 +142,20 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:4200",
     "http://localhost:4200",
 ]
+
+# 1. Permite que Angular lea la cookie CSRF (Esto NO es inseguro, es necesario para DRF)
+CSRF_COOKIE_HTTPONLY = False 
+
+# 2. Asegúrate de que el nombre de la cookie sea el estándar que busca Angular
+CSRF_COOKIE_NAME = 'csrftoken'
+
+# 3. Importante para desarrollo local (evita problemas de dominios)
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'Lax'
+
+# 4. Agrega esto para que Django envíe la cookie CSRF en el login
+# Aunque sea por Session, esto ayuda a que el token se refresque
+CSRF_USE_SESSIONS = False
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/

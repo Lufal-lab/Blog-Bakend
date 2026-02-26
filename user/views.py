@@ -7,8 +7,14 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth import get_user_model # To reference CustomUser
 from rest_framework.permissions import IsAuthenticated # Protect endpoints
 
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
+
+from django.middleware.csrf import get_token
+
 from drf_spectacular.utils import extend_schema, OpenApiResponse
 from .serializers import LoginSerializer, RegisterSerializer, MeSerializer
+from rest_framework.authentication import SessionAuthentication
 
 User = get_user_model() # Get the CustomUser model
 
@@ -113,6 +119,10 @@ class LogoutUserAPIView(APIView):
         }
     )
 
+    @method_decorator(csrf_exempt) # 👈 Permite logout sin chequear CSRF
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
+
     def post(self, request):
         """
         Handle POST request to log out a user.
@@ -124,10 +134,10 @@ class LogoutUserAPIView(APIView):
             Response: JSON response with logout confirmation.
         """
         logout(request) # Django clears the session automatically
-        return Response(
-            {"message": "Logged out successfully"},
-            status=status.HTTP_200_OK
-        )
+        response = Response({"message": "Logged out successfully"}, status=status.HTTP_200_OK)
+        response.delete_cookie('sessionid', path='/')
+        response.delete_cookie('csrftoken', path='/')
+        return response
 
 class RegisterUserAPIView(APIView):
     """
@@ -190,22 +200,100 @@ class RegisterUserAPIView(APIView):
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class MeAPIView(APIView):
-    """
-    Returns the currently authenticated user.
-    """
+# class MeAPIView(APIView):
+#     """
+#     Returns the currently authenticated user.
+#     """
 
+#     permission_classes = [IsAuthenticated]
+
+#     @extend_schema(
+#         responses={
+#             200: MeSerializer,
+#             401: OpenApiResponse(
+#                 description="Authentication required",
+#             ),
+#         }
+#     )
+
+#     # @method_decorator(ensure_csrf_cookie) # 👈 ESTA ES LA CLAVE: envía el token al cargar
+#     # def dispatch(self, *args, **kwargs):
+#     #     return super().dispatch(*args, **kwargs)
+
+#     # def get(self, request):
+#     #     serializer = MeSerializer(request.user)
+#     #     return Response(serializer.data, status=status.HTTP_200_OK)
+# class MeAPIView(APIView):
+#     """
+#     Returns the currently authenticated user.
+#     """
+#     # 1. Quitamos la autenticación de sesión de DRF para esta vista
+#     # Esto evita el error 403 por CSRF para usuarios anónimos.
+#     authentication_classes = [] 
+#     permission_classes = [AllowAny]
+
+#     @extend_schema(
+#         responses={
+#             200: MeSerializer,
+#             401: OpenApiResponse(description="Authentication required"),
+#         }
+#     )
+#     def get(self, request):
+#         # 2. El middleware de Django ya identificó al usuario, así que validamos:
+#         if request.user.is_authenticated:
+#             # 3. Solo generamos el token si el usuario es real
+#             get_token(request) 
+#             serializer = MeSerializer(request.user)
+#             return Response(serializer.data, status=status.HTTP_200_OK)
+        
+#         # 4. Si es anónimo, devolvemos 401 limpio (sin cookies de CSRF)
+#         return Response(
+#             {"detail": "Authentication credentials were not provided."}, 
+#             status=status.HTTP_401_UNAUTHORIZED
+#         )
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+class UnsafeSessionAuthentication(SessionAuthentication):
+    def enforce_csrf(self, request):
+        return  # No hace nada, ¡así de simple!
+
+class MeAPIView(APIView):
+    # 1. Usamos nuestra clase especial que permite ver la sesión sin CSRF
+    authentication_classes = [UnsafeSessionAuthentication]
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(
-        responses={
-            200: MeSerializer,
-            401: OpenApiResponse(
-                description="Authentication required",
-            ),
-        }
-    )
-
     def get(self, request):
+        # 2. Si llegamos aquí, es porque UnsafeSession detectó al usuario
+        # Ahora sí, generamos el token para que el usuario logueado lo tenga
+        get_token(request) 
         serializer = MeSerializer(request.user)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+# class CSRFDebugMiddleware:
+#     def __init__(self, get_response):
+#         self.get_response = get_response
+
+#     def __call__(self, request):
+#         response = self.get_response(request)
+        
+#         # Esto imprimirá en la consola CADA vez que algo intente poner una cookie
+#         if response.cookies:
+#             print(f"\n>>> COOKIES DETECTADAS EN: {request.path}")
+#             for key, cookie in response.cookies.items():
+#                 print(f"    - Nombre: {key}")
+#                 if key == 'csrftoken':
+#                     print("    !!!! ESTA ES LA QUE QUEREMOS QUITAR PARA ANÓNIMOS !!!!")
+        
+#         return response
