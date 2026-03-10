@@ -49,42 +49,66 @@ graph LR
     end
 ```
 
-## Tech Stack
-- Python 3.12.3
-- Django 6.0
-- Django Rest Framework
-- PostgreSQL
-- pytest / pytest-django
-- drf-nested-routers
-- drf-spectacular
+### Level 3: Component View (API Logic)
+This level shows how the Django API handles a request. It highlights the Permission Layer, which is the core of the business logic.
+```mermaid
+graph TD
+    Req[Angular HTTP Request] --> Auth[Auth Middleware]
+    Auth -- "Validate Session Cookie" --> ViewSet[Post ViewSet]
+    
+    subgraph "Django Internal Logic"
+        ViewSet --> Filter[QuerySet Filter]
+        Filter -- "Filter by Team/Privacy" --> Serializer[Post Serializer]
+        Serializer --> Perm[Custom Permission Classes]
+    end
 
-## Authentication
-Authentication is handled using cookies.
-Users can register, log in, and log out.
-Protected endpoints require authentication unless explicitly public.
+    Perm -- "Check Read/Write" --> DB[(PostgreSQL)]
+```
+###Database Design (ERD)
+This diagram represents the relational structure and how content is linked to users and teams.
+```mermaid
+erDiagram
+    USER ||--o{ POST : "author of"
+    USER }|--|| TEAM : "member of"
+    POST ||--o{ COMMENT : "contains"
+    POST ||--o{ LIKE : "receives"
+    USER ||--o{ COMMENT : "writes"
+    USER ||--o{ LIKE : "gives"
 
-## Core Concepts
+    USER {
+        integer id PK
+        string email
+        string role "admin/blogger"
+    }
+    POST {
+        integer id PK
+        string title
+        text content
+        string privacy_read
+        string privacy_write
+    }
+    TEAM {
+        integer id PK
+        string name
+    }
+```
+
+## Authentication & Core Concepts
+
+### Authentication
+- Authentication is handled using **secure cookies**.
+- Users can register, log in, and log out.
+- Protected endpoints require authentication unless explicitly public.
 
 ### Users and Teams
 - Each user belongs to exactly one team.
-- Users can change teams.
+- Only administrators can change team assignments.
 - Permissions are evaluated dynamically.
-- When a user changes teams, they lose access to posts from the previous team.
-- Only the current team determines access.
+- Access Control: When a user changes teams, they lose access to posts from the previous team, and only the current team determines access. The user’s posts are transferred to the new team and do not remain with the former team.
 
 ### Roles
-- Admin users can read and edit any post and bypass permission restrictions.
-- Regular users are subject to post permissions.
-
-## Blog Posts
-Each post includes:
-- Author (automatically set from logged-in user)
-- Title
-- Content
-- Excerpt (first 200 characters)
-- Created and updated timestamps
-- Read permissions
-- Write permissions
+- Admin: Can read and edit any post and bypass all permission restrictions.
+- Regular Users: Subject to post-level permissions.
 
 ## Permissions System
 Read and write permissions are independent.
@@ -100,86 +124,74 @@ Rules:
 - Team permissions do not apply if the author is in the Default team.
 - Object-level permission checks are enforced.
 
+## Blog Posts
+Each post includes:
+- Author (automatically set from logged-in user)
+- Title
+- Content
+- Excerpt (first 200 characters)
+- Created and updated timestamps
+- Read permissions
+- Write permissions
+
 ## API Endpoints
 
 ### Authentication
-POST /api/users/register/
-POST /api/users/login/
-POST /api/users/logout/
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/users/register/` | Register a new user |
+| `POST` | `/api/users/login/` | User login (Sets Session Cookie) |
+| `POST` | `/api/users/logout/` | User logout |
 
 ### Posts
-GET /api/posts/
-POST /api/posts/
-GET /api/posts/{post_id}/
-PUT /api/posts/{post_id}/
-PATCH /api/posts/{post_id}/
-DELETE /api/posts/{post_id}/
+* `GET /api/posts/`
+* `POST /api/posts/`
+* `GET /api/posts/{id}/`
+* `PUT /api/posts/{id}/`
+* `PATCH /api/posts/{id}/`
+* `DELETE /api/posts/{id}/`
 
-- List returns only accessible posts.
-- Detail returns 404 if no read access.
-- Pagination: 10 posts per page.
+> **Note:** The list endpoint returns only accessible posts. Detail endpoints return **404** if the user lacks read access. Pagination is set to **10 posts per page**.
 
-### Comments
-GET /api/posts/{post_id}/comments/
-POST /api/posts/{post_id}/comments/
-GET /api/posts/{post_id}/comments/{comment_id}/
-DELETE /api/posts/{post_id}/comments/{comment_id}/
+### Comments & Likes
+* **Comments:** `GET/POST` at `/api/posts/{id}/comments/`. Only users with read access can comment.
+* **Likes:** `POST` at `/api/posts/{id}/likes/`. Restricted to one like per user per post.
 
-Rules:
-- Authentication required.
-- User must have read access.
-- Users can delete only their own comments.
-- Pagination: 10 comments per page.
+---
 
-### Likes
-POST /api/posts/{post_id}/likes/
-DELETE /api/posts/{post_id}/likes/unlike/
+## 🛠 Tech Stack & Database
+* **Stack:** Python 3.12.3, Django 6.0, Django REST Framework, PostgreSQL.
+* **Testing:** `pytest` / `pytest-django`. Covers models, permissions, and complex edge cases.
+* **Database Rules:** * Cascade deletions enforced for all related content.
+    * Unique constraints on likes to prevent duplicates.
 
-Rules:
-- Authentication required.
-- User must have read access.
-- One like per user per post.
-- Pagination: 20 likes per page.
+---
 
-## Deletion Rules
-- Only users with edit permission can delete posts.
-- Deleting a post removes all related comments and likes.
+## 🚀 Installation
 
-## Testing
-- Tests written with pytest.
-- Organized by models, permissions, serializers, and viewsets.
-- Covers edge cases including team changes and permission updates.
-
-Run tests:
-pytest
-
-## Database
-- PostgreSQL
-- Cascade deletions enforced.
-- Unique constraint on likes.
-
-## Installation
-
-1. Clone repository
-git clone <repository-url>
-
-2. Create virtual environment
-python -m venv .venv
-source .venv/bin/activate
-
-3. Install dependencies
-pip install -r requirements.txt
-
-4. Apply migrations
-python manage.py migrate
-
-5. Run server
-python manage.py runserver
-
+1. **Clone the repository:**
+   ```bash
+   git clone <repository-url>
+   ```
+2. **Create and activate virtual environment:**
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate
+   ```
+3. **Install dependencies & apply migrations:**
+   ```bash
+   pip install -r requirements.txt
+   python manage.py migrate
+   ```
+4. **Run the development server:**
+   ```bash
+   python manage.py runserver
+   ```
+   
 ## API Documentation
-Generated with drf-spectacular:
-/api/schema/
-/api/docs/
+The API is fully documented and interactive using drf-spectacular:
+Schema (OpenAPI 3.0): /api/schema/
+Swagger UI: /api/docs/
 
 ## Author
 Luisa Fernanda Alvarez Villa
