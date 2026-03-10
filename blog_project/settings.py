@@ -204,7 +204,7 @@ else:
 
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "Avanzatech Blog API",
+    "TITLE": "Blog API",
     "DESCRIPTION": "Documentación automática de la API",
     "VERSION": "1.0.0",
 }
